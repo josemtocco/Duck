@@ -3,7 +3,7 @@ name: Atualiza lista TV+
 on:
   schedule:
     - cron: '0 */6 * * *'   # a cada 6 h
-  workflow_dispatch:        # permite disparar manualmente
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,6 +16,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
 
       - name: Install dependencies
         run: pip install -r requirements.txt
