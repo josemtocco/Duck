@@ -1,109 +1,122 @@
-# src/parser.py
-import os, json, datetime
-from collections import defaultdict
+"""Limpeza, deduplicação, categorização e cache de canais."""
+
+from __future__ import annotations
+
+import datetime
+import json
+import os
+from typing import Any
+
 from unidecode import unidecode
 
-CACHE_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "channels.json")
+CACHE_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "data", "channels.json"
+)
 
-# -------------------------------------------------
+
 def normalize(text: str) -> str:
-    """Minusculo, sem acentos e sem espaços extras."""
-    return unidecode(text).lower().strip()
+    """Minúsculo, sem acentos e sem espaços extras."""
+    return unidecode(str(text or "")).lower().strip()
 
-# -------------------------------------------------
-def deduplicate(channels):
-    """
-    Remove entradas com a mesma URL (após normalização).
+
+def deduplicate(channels: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Remove entradas com a mesma URL (após normalização).
     Mantém a primeira ocorrência encontrada.
     """
-    seen = {}
-    unique = []
+    seen: dict[str, dict[str, Any]] = {}
+    unique: list[dict[str, Any]] = []
     for ch in channels:
-        key = normalize(ch["url"])
-        if key not in seen:
-            seen[key] = ch
-            unique.append(ch)
+        key = normalize(ch.get("url", ""))
+        if not key or key in seen:
+            continue
+        seen[key] = ch
+        unique.append(ch)
     return unique
 
-# -------------------------------------------------
-def merge_categories(cat_set):
-    """
-    Recebe um *set* de categorias (já normalizadas) e devolve
+
+def merge_categories(cat_set: set[str]) -> str:
+    """Recebe um set de categorias (já normalizadas) e devolve
     a categoria principal, juntando sinônimos.
     """
-    synonyms = {
-        "entretenimento": {"diversão", "lazer"},
-        "esportes": {"sport", "sports", "esportivos"},
-        "filmes": {"cinema", "movies"},
-        "notícias": {"news", "noticia", "notícias"},
+    if not cat_set:
+        return "outros"
+
+    synonyms: dict[str, set[str]] = {
+        "entretenimento": {"diversao", "lazer", "entretenimento"},
+        "esportes": {"sport", "sports", "esportivos", "esporte"},
+        "filmes": {"cinema", "movies", "filme"},
+        "noticias": {"news", "noticia", "noticias", "jornalismo"},
+        "abertos": {"aberto", "tv aberta", "aberta", "free"},
+        "series": {"serie", "series"},
+        "infantil": {"kids", "criancas", "infantil", "desenho"},
+        "documentarios": {"doc", "documentario", "docs"},
+        "musica": {"music", "musical"},
     }
 
+    normalized = {normalize(c) for c in cat_set}
+
     for main, alts in synonyms.items():
-        if cat_set & alts:
+        if normalized & alts:
             return main
 
-    import json, os, datetime
-from json import JSONDecodeError
+    return next(iter(normalized)) or "outros"
 
-CACHE_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "channels.json")
 
-def load_cache():
-    """
-    Lê o cache JSON.
-    - Se o arquivo não existir → devolve dict vazio.
-    - Se o arquivo existir, mas estiver vazio ou inválido → devolve dict vazio
-      e sobrescreve o arquivo na primeira gravação.
-    """
+def load_cache() -> dict[str, Any]:
+    """Lê o cache JSON. Arquivo inexistente/vazio/inválido → dict vazio."""
     if not os.path.exists(CACHE_FILE):
-        # cria o diretório caso ainda não exista
         os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
         return {}
 
     try:
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            # arquivos vazios retornam "" → json.loads falha; tratamos aqui
             content = f.read().strip()
             if not content:
                 return {}
-            return json.loads(content)
-    except (JSONDecodeError, OSError):
-        # Caso o JSON esteja corrompido, ignora e começa do zero
+            data = json.loads(content)
+            return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
         return {}
 
-def save_cache(data):
+
+def save_cache(data: dict[str, Any]) -> None:
     """Grava o dicionário de cache no arquivo JSON."""
     os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-# -------------------------------------------------
-def reconcile(new_list, cache):
-    """
-    - Mantém canais já existentes (atualiza data de última visita).
-    - Insere novos canais.
-    - Remove canais que não apareceram na última coleta (12 h = 2 ciclos).
+
+def reconcile(
+    new_list: list[dict[str, Any]], cache: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Mantém canais já existentes (atualiza last_seen),
+    insere novos e remove os que não apareceram na última coleta
+    (diferença de dias > 0 ≈ 1 ciclo de 6 h).
     """
     today = datetime.date.today().isoformat()
 
-    # Atualiza ou adiciona
     for ch in new_list:
-        url_key = normalize(ch["url"])
+        url_key = normalize(ch.get("url", ""))
+        if not url_key:
+            continue
         cache[url_key] = {
-            "name": ch["name"],
-            "category": ch["category"],
+            "name": ch.get("name", "Sem nome"),
+            "url": ch.get("url", ""),
+            "category": ch.get("category", "outros"),
             "last_seen": today,
         }
 
-    # Remove canais não vistos nas duas últimas execuções (12 h)
     to_remove = []
     for key, val in cache.items():
-        last = datetime.date.fromisoformat(val["last_seen"])
-        diff = datetime.date.fromisoformat(today) - last
-        if diff.days > 0:          # >0 => não apareceu na última coleta
+        try:
+            last = datetime.date.fromisoformat(val.get("last_seen", today))
+            diff = datetime.date.fromisoformat(today) - last
+            if diff.days > 0:
+                to_remove.append(key)
+        except (ValueError, TypeError):
             to_remove.append(key)
 
     for key in to_remove:
         del cache[key]
 
-    # Converte o dicionário de volta para lista de dicts
     return list(cache.values())
