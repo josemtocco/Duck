@@ -1,0 +1,10 @@
+#EXTM3U
+#EXTGRP:Abertos
+#EXTINF:-1 tvg-id="" tvg-name="Exemplo - Globo (demo)" group-title="Abertos",Exemplo - Globo (demo)
+https://example.com/stream/globo.m3u8
+#EXTGRP:Esportes
+#EXTINF:-1 tvg-id="" tvg-name="Exemplo - SporTV (demo)" group-title="Esportes",Exemplo - SporTV (demo)
+https://example.com/stream/sportv.m3u8
+#EXTGRP:Noticias
+#EXTINF:-1 tvg-id="" tvg-name="Exemplo - News (demo)" group-title="Noticias",Exemplo - News (demo)
+https://example.com/stream/news.m3u8

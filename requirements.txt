@@ -1,6 +1,4 @@
-requests==2.32.2
-beautifulsoup4==4.12.3
-lxml==5.2.2
-python-dateutil==2.9.0
-pyyaml==6.0.2           # opcional, caso queira armazenar categorias em YAML
-unidecode==1.3.8
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+unidecode>=1.3.0
