@@ -42,16 +42,33 @@ def merge_categories(cat_set):
         if cat_set & alts:
             return main
 
-    # fallback: pega a primeira (ou a única) do set
-    return next(iter(cat_set))
+    import json, os, datetime
+from json import JSONDecodeError
 
-# -------------------------------------------------
+CACHE_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "channels.json")
+
 def load_cache():
-    """Lê o JSON de cache (cria vazio se não existir)."""
-    if os.path.exists(CACHE_FILE):
+    """
+    Lê o cache JSON.
+    - Se o arquivo não existir → devolve dict vazio.
+    - Se o arquivo existir, mas estiver vazio ou inválido → devolve dict vazio
+      e sobrescreve o arquivo na primeira gravação.
+    """
+    if not os.path.exists(CACHE_FILE):
+        # cria o diretório caso ainda não exista
+        os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+        return {}
+
+    try:
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+            # arquivos vazios retornam "" → json.loads falha; tratamos aqui
+            content = f.read().strip()
+            if not content:
+                return {}
+            return json.loads(content)
+    except (JSONDecodeError, OSError):
+        # Caso o JSON esteja corrompido, ignora e começa do zero
+        return {}
 
 def save_cache(data):
     """Grava o dicionário de cache no arquivo JSON."""
