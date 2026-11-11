@@ -3,18 +3,18 @@
     "name": "Exemplo - Globo (demo)",
     "url": "https://example.com/stream/globo.m3u8",
     "category": "abertos",
-    "last_seen": "2026-11-10"
+    "last_seen": "2026-11-11"
   },
   "https://example.com/stream/sportv.m3u8": {
     "name": "Exemplo - SporTV (demo)",
     "url": "https://example.com/stream/sportv.m3u8",
     "category": "esportes",
-    "last_seen": "2026-11-10"
+    "last_seen": "2026-11-11"
   },
   "https://example.com/stream/news.m3u8": {
     "name": "Exemplo - News (demo)",
     "url": "https://example.com/stream/news.m3u8",
     "category": "noticias",
-    "last_seen": "2026-11-10"
+    "last_seen": "2026-11-11"
   }
 }
